@@ -19,11 +19,6 @@ const Converter = () => {
     adsBlock: true,
     pornBlock: true,
   });
-  
-  // State for custom server/bug
-  const [customServerEnabled, setCustomServerEnabled] = useState(false);
-  const [customServerValue, setCustomServerValue] = useState('');
-  const [wildcardMode, setWildcardMode] = useState(false);
 
   const handleConvert = async () => {
     if (!v2rayInput.trim()) {
@@ -42,19 +37,9 @@ const Converter = () => {
         ...options
       };
       
-      // Prepare custom server settings
-      const customServerSettings = customServerEnabled 
-        ? { 
-            enabled: true, 
-            value: customServerValue, 
-            isWildcard: wildcardMode 
-          } 
-        : { enabled: false };
-      
       const result = await convertV2rayToConfig(
         v2rayInput, 
-        conversionOptions, 
-        customServerSettings
+        conversionOptions
       );
       
       setConfigOutput(result);
@@ -147,48 +132,6 @@ const Converter = () => {
         >
           {loading ? 'Converting...' : 'Convert to Clash'}
         </button>
-      </div>
-      
-      {/* Custom Server/Bug Options */}
-      <div className="option-section">
-        <div className="button-group">
-          <button
-            className={`btn ${customServerEnabled ? 'btn-outline active' : 'btn-secondary'}`}
-            onClick={() => setCustomServerEnabled(!customServerEnabled)}
-          >
-            {customServerEnabled ? 'Disable Custom Server' : 'Enable Custom Server'}
-          </button>
-        </div>
-        
-        {customServerEnabled && (
-          <div style={{ marginTop: '1rem' }}>
-            <div className="input-section">
-              <label className="label">Custom Server/Bug Host:</label>
-              <input
-                type="text"
-                className="textarea"
-                value={customServerValue}
-                onChange={(e) => setCustomServerValue(e.target.value)}
-                placeholder="Enter custom server/bug host..."
-              />
-            </div>
-            
-            <div className="button-group">
-              <button
-                className={`btn ${!wildcardMode ? 'btn-outline active' : 'btn-secondary'}`}
-                onClick={() => setWildcardMode(false)}
-              >
-                Non-Wildcard
-              </button>
-              <button
-                className={`btn ${wildcardMode ? 'btn-outline active' : 'btn-secondary'}`}
-                onClick={() => setWildcardMode(true)}
-              >
-                Wildcard
-              </button>
-            </div>
-          </div>
-        )}
       </div>
       
       {/* DNS Mode Options */}

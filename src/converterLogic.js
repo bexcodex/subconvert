@@ -2,7 +2,7 @@
 import yaml from 'js-yaml';
 
 // Main conversion function
-export async function convertV2rayToConfig(v2rayLinks, options = {}, customServerSettings = {}) {
+export async function convertV2rayToConfig(v2rayLinks, options = {}) {
   // Split input by lines
   const links = v2rayLinks.split(/\r?\n/).filter((line) => line.trim() !== "");
   if (links.length === 0) {
@@ -11,37 +11,6 @@ export async function convertV2rayToConfig(v2rayLinks, options = {}, customServe
   
   // Process each link
   const parsedLinks = links.map((link) => parseV2rayLink(link));
-
-  // Apply custom server/bug if enabled
-  if (customServerSettings.enabled && customServerSettings.value) {
-    parsedLinks.forEach(link => {
-      // Store original values before modification
-      const originalServer = link.server;
-      const originalSni = link.sni;
-      const originalWsHost = link.wsHost;
-      
-      // Change server to bughost
-      link.server = customServerSettings.value;
-
-      if (customServerSettings.isWildcard) {
-        // Wildcard Mode: servername/sni/host = bughost.domainasli
-        if (link.type === "vmess" || link.type === "vless" || link.type === "trojan") {
-          link.sni = `${customServerSettings.value}.${originalSni}`;
-        }
-
-        // For websocket (ws) and HTTP Upgrade
-        if (link.network === "ws" || link.type === "ss") {
-          link.wsHost = `${customServerSettings.value}.${originalWsHost}`;
-        }
-
-        // For GRPC - use sni field
-        if (link.network === "grpc") {
-          link.sni = `${customServerSettings.value}.${originalSni}`;
-        }
-      }
-      // If Non-Wildcard Mode, sni/servername/host remain original (no changes needed)
-    });
-  }
 
   // Generate Clash config
   return generateClashConfig(parsedLinks, options);
@@ -301,12 +270,38 @@ function generateClashConfig(parsedLinks, options = {}) {
     }
   }
   
+  // Process proxy names to avoid duplicates
+  const proxyNames = [];
+  const usedNames = new Set();
+  
+  parsedLinks.forEach((link, index) => {
+    let uniqueName = link.name;
+    
+    // Check if this name already exists, if so add a number suffix
+    let counter = 1;
+    while (usedNames.has(uniqueName)) {
+      // If the current name already has a counter in brackets, increment it
+      const match = uniqueName.match(/^(.+?)\s*\[(\d+)\]$/);
+      if (match) {
+        const baseName = match[1];
+        const currentCounter = parseInt(match[2]);
+        uniqueName = `${baseName} [${currentCounter + 1}]`;
+      } else {
+        uniqueName = `${link.name} [${++counter}]`;
+      }
+    }
+    
+    usedNames.add(uniqueName);
+    proxyNames.push(uniqueName);
+    link.uniqueName = uniqueName;
+  });
+  
   config += `proxies:`;
-  // Add all proxies
+  // Add all proxies with unique names
   parsedLinks.forEach((link, index) => {
     config += "\n";
     if (link.type === "vmess") {
-      config += `  - name: "[${index + 1}]-${link.name}"\n    type: vmess\n    server: ${link.server}\n    port: ${link.port}\n    uuid: ${link.uuid}\n    alterId: ${link.alterId || 0}\n    cipher: ${link.cipher || "auto"}\n    udp: true\n    tls: ${link.tls}\n    skip-cert-verify: ${link.skipCertVerify || true}\n`;
+      config += `  - name: "${link.uniqueName}"\n    type: vmess\n    server: ${link.server}\n    port: ${link.port}\n    uuid: ${link.uuid}\n    alterId: ${link.alterId || 0}\n    cipher: ${link.cipher || "auto"}\n    udp: true\n    tls: ${link.tls}\n    skip-cert-verify: ${link.skipCertVerify || true}\n`;
       if (link.tls && link.sni) {
         config += `    servername: ${link.sni}\n`;
       }
@@ -319,7 +314,7 @@ function generateClashConfig(parsedLinks, options = {}) {
         config += `    network: grpc\n    grpc-opts:\n      grpc-service-name: ${link.grpcServiceName}\n`;
       }
     } else if (link.type === "vless") {
-      config += `  - name: "[${index + 1}]-${link.name}"\n    type: vless\n    server: ${link.server}\n    port: ${link.port}\n    uuid: ${link.uuid}\n    udp: true\n    tls: ${link.tls}\n    skip-cert-verify: ${link.skipCertVerify || true}\n`;
+      config += `  - name: "${link.uniqueName}"\n    type: vless\n    server: ${link.server}\n    port: ${link.port}\n    uuid: ${link.uuid}\n    udp: true\n    tls: ${link.tls}\n    skip-cert-verify: ${link.skipCertVerify || true}\n`;
       if (link.tls && link.sni) {
         config += `    servername: ${link.sni}\n`;
       }
@@ -332,7 +327,7 @@ function generateClashConfig(parsedLinks, options = {}) {
         config += `    network: grpc\n    grpc-opts:\n      grpc-service-name: ${link.grpcServiceName}\n`;
       }
     } else if (link.type === "trojan") {
-      config += `  - name: "[${index + 1}]-${link.name}"\n    type: trojan\n    server: ${link.server}\n    port: ${link.port}\n    password: ${link.password}\n    udp: true\n    skip-cert-verify: ${link.skipCertVerify || true}\n`;
+      config += `  - name: "${link.uniqueName}"\n    type: trojan\n    server: ${link.server}\n    port: ${link.port}\n    password: ${link.password}\n    udp: true\n    skip-cert-verify: ${link.skipCertVerify || true}\n`;
       if (link.sni) {
         config += `    sni: ${link.sni}\n`;
       }
@@ -345,13 +340,11 @@ function generateClashConfig(parsedLinks, options = {}) {
         config += `    network: grpc\n    grpc-opts:\n      grpc-service-name: ${link.grpcServiceName}\n`;
       }
     } else if (link.type === "ss") {
-      config += `  - name: "[${index + 1}]-${link.name}"\n    server: ${link.server}\n    port: ${link.port}\n    type: ss\n    cipher: ${link.cipher || "none"}\n    password: ${link.password}\n    plugin: v2ray-plugin\n    client-fingerprint: chrome\n    udp: false\n    plugin-opts:\n      mode: websocket\n      host: ${link.wsHost || link.server}\n      path: ${link.wsPath || ""}\n      tls: ${link.tls}\n      mux: false\n      skip-cert-verify: true\n    headers:\n      custom: value\n      ip-version: dual\n      v2ray-http-upgrade: false\n      v2ray-http-upgrade-fast-open: false\n`;
+      config += `  - name: "${link.uniqueName}"\n    server: ${link.server}\n    port: ${link.port}\n    type: ss\n    cipher: ${link.cipher || "none"}\n    password: ${link.password}\n    plugin: v2ray-plugin\n    client-fingerprint: chrome\n    udp: false\n    plugin-opts:\n      mode: websocket\n      host: ${link.wsHost || link.server}\n      path: ${link.wsPath || ""}\n      tls: ${link.tls}\n      mux: false\n      skip-cert-verify: true\n    headers:\n      custom: value\n      ip-version: dual\n      v2ray-http-upgrade: false\n      v2ray-http-upgrade-fast-open: false\n`;
     }
   });
 
   if (isFullConfig) {
-    // Create a list of proxy names first to avoid duplication
-    const proxyNames = parsedLinks.map((link, index) => `"[${index + 1}]-${link.name}"`);
     config += `\nproxy-groups:\n  - name: "V2RAY-TO-CLASH"\n    type: select\n    proxies:\n      - SELECTOR\n`;
     if (bestPing) config += `      - BEST-PING\n`;
     if (loadBalance) config += `      - LOAD-BALANCE\n`;
