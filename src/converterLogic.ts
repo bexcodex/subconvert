@@ -348,7 +348,7 @@ function generateClashConfig(parsedLinks: V2RayLink[], options: ConfigOptions = 
   });
 
   if (isFullConfig) {
-    config += `\nproxy-groups:\n  - name: "BEXCODEX"\n    type: select\n    proxies:\n      - SELECTOR\n`;
+    config += `\nproxy-groups:\n  - name: "BEXCODEX"\n    type: select\n    proxies:\n`;
     if (bestPing) config += `      - BEST-PING\n`;
     if (loadBalance) config += `      - LOAD-BALANCE\n`;
     if (fallback) config += `      - FALLBACK\n`;
