@@ -10,26 +10,6 @@ interface ConfigOptions {
   pornBlock: boolean;
 }
 
-interface V2RayLink {
-  type: string;
-  name: string;
-  server: string;
-  port: number;
-  uuid?: string;
-  password?: string;
-  cipher?: string;
-  alterId?: number;
-  tls: boolean;
-  network: string;
-  wsPath?: string;
-  wsHost?: string;
-  grpcServiceName?: string;
-  httpUpgrade?: boolean;
-  sni?: string;
-  skipCertVerify: boolean;
-  uniqueName?: string;
-}
-
 const Converter: React.FC = () => {
   const [v2rayInput, setV2rayInput] = useState<string>('');
   const [configOutput, setConfigOutput] = useState<string>('');

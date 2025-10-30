@@ -181,11 +181,11 @@ function parseShadowsocksLink(link: string): V2RayLink {
     const content = link.replace("ss://", "");
     let userInfo: string,
       serverPort: string,
-      name: string,
+      name: string = "",
       params: Record<string, string> = {};
     if (content.includes("@")) {
       const [encodedUserInfo, rest] = content.split("@");
-      let serverPortStr: string, paramsNamePart: string;
+      let serverPortStr: string = "", paramsNamePart: string = "";
       if (rest.includes("?")) {
         const [serverPortPart, tempParamsNamePart] = rest.split("?");
         serverPortStr = serverPortPart;
@@ -230,7 +230,7 @@ function parseShadowsocksLink(link: string): V2RayLink {
       cipher: method,
       password: password,
       udp: false,
-      tls: params.security === "tls" || (params.plugin_opts && params.plugin_opts.includes("tls=1")),
+      tls: params.security === "tls" || (params.plugin_opts && params.plugin_opts.includes("tls=1")) || false,
       wsPath: params.path || (params.plugin_opts ? (params.plugin_opts.match(/path=([^;]+)/) || ["", ""])[1] : ""),
       wsHost: params.host || (params.plugin_opts ? (params.plugin_opts.match(/host=([^;]+)/) || ["", ""])[1] : server),
       sni: params.sni || server,
