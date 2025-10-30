@@ -1,3 +1,5 @@
+const defaultTheme = require('tailwindcss/defaultTheme')
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -7,25 +9,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        dark: {
-          900: '#0a0a0a',
-          800: '#1a1a1a',
-          700: '#2a2a2a',
-          600: '#3a3a3a',
-          500: '#4a4a4a',
+        background: '#0D1117',
+        primary: '#161B22',
+        border: '#30363D',
+        text: {
+          DEFAULT: '#C9D1D9',
+          heading: '#F0F6FC',
         },
-        blue: {
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
+        accent: {
+          DEFAULT: '#58A6FF',
+          hover: '#79B8FF',
         },
-        green: {
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-        }
-      }
+        success: '#3FB950',
+        error: '#F85149',
+      },
+      fontFamily: {
+        sans: ['Inter', ...defaultTheme.fontFamily.sans],
+        mono: ['Fira Code', ...default_theme.fontFamily.mono],
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+  ],
 }
