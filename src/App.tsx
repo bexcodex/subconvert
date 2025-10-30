@@ -9,7 +9,7 @@ function App() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <img src="/vite.svg" className="h-8 w-8" alt="Vite Logo" />
+              <img src="/icon.jpg" className="h-8 w-8" alt="icon" />
               <h1 className="text-xl font-bold text-text-heading">
                 Clash Converter
               </h1>
@@ -22,7 +22,7 @@ function App() {
       </main>
       <footer className="bg-primary border-t border-border mt-12 py-6">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-text/60">
-          <p>&copy; {new Date().getFullYear()} Clash Converter. All Rights Reserved.</p>
+          <p>&copy; {new Date().getFullYear()} BEXCODEX. All Rights Reserved.</p>
         </div>
       </footer>
     </div>
