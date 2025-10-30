@@ -8,13 +8,6 @@ const parseV2RayLink = (link) => {
     const url = new URL(link);
     const protocol = url.protocol.replace(':', '').toLowerCase();
     
-    const config = {
-      name: url.hash ? decodeURIComponent(url.hash.substring(1)) : 'V2Ray Server',
-      type: '',
-      server: url.hostname,
-      port: parseInt(url.port) || 443,
-    };
-
     switch (protocol) {
       case 'vmess':
         return parseVMessLink(link);
@@ -40,100 +33,207 @@ const parseV2RayLink = (link) => {
 
 const parseVMessLink = (link) => {
   const vmessData = JSON.parse(atob(link.replace('vmess://', '')));
-  return {
-    name: vmessData.ps,
+  
+  const config = {
+    name: vmessData.ps || 'VMess Server',
     type: 'vmess',
     server: vmessData.add,
     port: parseInt(vmessData.port),
     uuid: vmessData.id,
     alterId: parseInt(vmessData.aid) || 0,
     cipher: vmessData.scy || 'auto',
-    network: vmessData.net || 'tcp',
-    tls: vmessData.tls === 'tls' ? true : false,
-    sni: vmessData.sni || vmessData.host || '',
-    host: vmessData.host || '',
-    path: vmessData.path || '/',
-    headerType: vmessData.type || 'none',
-    alpn: vmessData.alpn || '',
-    fingerprint: vmessData.fp || '',
-    reality: {
-      enabled: vmessData.pbk && vmessData.sid && vmessData.spx ? true : false,
-      publicKey: vmessData.pbk || '',
-      shortId: vmessData.sid || '',
-      spiderX: vmessData.spx || '',
-      fingerprint: vmessData.fp || 'chrome',
-    }
   };
+  
+  // TLS settings
+  if (vmessData.tls === 'tls') {
+    config.tls = true;
+    if (vmessData.sni) config.servername = vmessData.sni;
+    if (vmessData.alpn) config.alpn = vmessData.alpn;
+    if (vmessData.fp) config.fingerprint = vmessData.fp;
+  }
+  
+  // Network settings
+  config.network = vmessData.net || 'tcp';
+  
+  if (config.network === 'ws') {
+    if (vmessData.path) config.wsPath = vmessData.path;
+    if (vmessData.host) config.wsHeaders = { Host: vmessData.host };
+  } else if (config.network === 'grpc') {
+    if (vmessData.path) config.grpcServiceName = vmessData.path;
+  } else if (config.network === 'h2' || config.network === 'http') {
+    if (vmessData.path) config.h2Path = vmessData.path;
+    if (vmessData.host) config.h2Host = [vmessData.host];
+  } else if (config.network === 'tcp') {
+    if (vmessData.type && vmessData.type !== 'none') {
+      config.tcpHeaders = { type: vmessData.type };
+      if (vmessData.host) config.tcpHeaders.request = { headers: { Host: [vmessData.host] } };
+      if (vmessData.path) config.tcpHeaders.request = { path: [vmessData.path] };
+    }
+  }
+  
+  // Reality settings
+  if (vmessData.pbk && vmessData.sid) {
+    config.realityOpts = {
+      publicKey: vmessData.pbk,
+      shortId: vmessData.sid
+    };
+    if (vmessData.spx) config.realityOpts.spiderX = vmessData.spx;
+    if (vmessData.fp) config.realityOpts.fingerprint = vmessData.fp;
+  }
+  
+  return config;
 };
 
 const parseVLessLink = (link) => {
   const url = new URL(link);
   const params = new URLSearchParams(url.search);
   
-  return {
+  const config = {
     name: url.hash ? decodeURIComponent(url.hash.substring(1)) : 'VLess Server',
     type: 'vless',
     server: url.hostname,
     port: parseInt(url.port) || 443,
     uuid: url.username,
-    flow: params.get('flow') || '',
-    network: params.get('type') || 'tcp',
-    tls: params.get('security') === 'tls' || params.get('security') === 'reality',
-    reality: {
-      enabled: params.get('security') === 'reality',
-      publicKey: params.get('pbk') || '',
-      shortId: params.get('sid') || '',
-      spiderX: params.get('spx') || '',
-      fingerprint: params.get('fp') || 'chrome',
-    },
-    sni: params.get('sni') || params.get('host') || '',
-    host: params.get('host') || '',
-    path: params.get('path') || '/',
-    headerType: params.get('headerType') || 'none',
-    alpn: params.get('alpn') || '',
   };
+  
+  // Flow for VLESS
+  const flow = params.get('flow');
+  if (flow) config.flow = flow;
+  
+  // Network settings
+  config.network = params.get('type') || 'tcp';
+  
+  // TLS settings
+  const security = params.get('security');
+  if (security === 'tls') {
+    config.tls = true;
+  } else if (security === 'reality') {
+    config.tls = true;
+    config.realityOpts = {
+      publicKey: params.get('pbk') || '',
+      shortId: params.get('sid') || ''
+    };
+    if (params.get('spx')) config.realityOpts.spiderX = params.get('spx');
+    if (params.get('fp')) config.realityOpts.fingerprint = params.get('fp');
+  }
+  
+  // SNI
+  const sni = params.get('sni') || params.get('host');
+  if (sni) config.servername = sni;
+  
+  // Network-specific settings
+  if (config.network === 'ws') {
+    const path = params.get('path') || '/';
+    config.wsPath = path;
+    const host = params.get('host');
+    if (host) config.wsHeaders = { Host: host };
+  } else if (config.network === 'grpc') {
+    const serviceName = params.get('serviceName') || params.get('path') || 'gRPC';
+    config.grpcServiceName = serviceName;
+    if (params.get('mode') === 'multi') config.grpcMultiMode = true;
+  } else if (config.network === 'h2' || config.network === 'http') {
+    const path = params.get('path');
+    if (path) config.h2Path = path;
+    const host = params.get('host');
+    if (host) config.h2Host = [host];
+  } else if (config.network === 'tcp') {
+    const headerType = params.get('headerType');
+    if (headerType && headerType !== 'none') {
+      config.tcpHeaders = { type: headerType };
+    }
+  }
+  
+  // ALPN
+  const alpn = params.get('alpn');
+  if (alpn) config.alpn = alpn;
+  
+  return config;
 };
 
 const parseTrojanLink = (link) => {
   const url = new URL(link);
   const params = new URLSearchParams(url.search);
   
-  return {
+  const config = {
     name: url.hash ? decodeURIComponent(url.hash.substring(1)) : 'Trojan Server',
     type: 'trojan',
     server: url.hostname,
     port: parseInt(url.port) || 443,
-    password: url.username,
-    sni: params.get('sni') || url.hostname,
-    alpn: params.get('alpn') || '',
-    skipCertVerify: params.get('allowInsecure') === '1',
-    network: params.get('type') || 'tcp',
-    fp: params.get('fp') || 'randomized',
-    tls: true,
-    reality: {
-      enabled: params.get('security') === 'reality',
-      publicKey: params.get('pbk') || '',
-      shortId: params.get('sid') || '',
-      spiderX: params.get('spx') || '',
-      fingerprint: params.get('fp') || 'chrome',
-    },
+    password: url.username, // The password is in the username part of the URL
   };
+  
+  // TLS settings
+  config.tls = true;
+  
+  const sni = params.get('sni') || url.hostname;
+  if (sni) config.servername = sni;
+  
+  if (params.get('alpn')) config.alpn = params.get('alpn');
+  
+  // Skip certificate verification
+  if (params.get('allowInsecure') === '1' || params.get('allowInsecure') === 'true') {
+    config.skipCertVerify = true;
+  }
+  
+  // Network settings
+  config.network = params.get('type') || 'tcp';
+  
+  if (params.get('fp')) config.fingerprint = params.get('fp');
+  
+  // Reality settings
+  if (params.get('security') === 'reality') {
+    config.realityOpts = {
+      publicKey: params.get('pbk') || '',
+      shortId: params.get('sid') || ''
+    };
+    if (params.get('spx')) config.realityOpts.spiderX = params.get('spx');
+    if (params.get('fp')) config.realityOpts.fingerprint = params.get('fp');
+  }
+  
+  // Network-specific settings
+  if (config.network === 'ws') {
+    const path = params.get('path') || '/';
+    config.wsPath = path;
+    const host = params.get('host');
+    if (host) config.wsHeaders = { Host: host };
+  } else if (config.network === 'grpc') {
+    const serviceName = params.get('serviceName') || params.get('path') || 'gRPC';
+    config.grpcServiceName = serviceName;
+  }
+  
+  return config;
 };
 
 const parseShadowsocksLink = (link) => {
   const url = new URL(link);
   const [method, password] = atob(url.username).split(':');
   
-  return {
+  const config = {
     name: url.hash ? decodeURIComponent(url.hash.substring(1)) : 'Shadowsocks Server',
     type: 'ss',
     server: url.hostname,
     port: parseInt(url.port) || 8388,
     cipher: method,
     password: password,
-    plugin: url.searchParams.get('plugin') || '',
-    pluginOpts: url.searchParams.get('plugin-opts') || '',
   };
+  
+  // Plugin support
+  const plugin = url.searchParams.get('plugin');
+  if (plugin) {
+    const [pluginName, pluginOpts] = plugin.split(';');
+    config.plugin = pluginName;
+    if (pluginOpts) {
+      // Parse plugin options
+      const pluginOptions = {};
+      pluginOpts.split('&').forEach(opt => {
+        const [key, value] = opt.split('=');
+        pluginOptions[key] = value ? decodeURIComponent(value) : '';
+      });
+      config.pluginOpts = pluginOptions;
+    }
+  }
+  
+  return config;
 };
 
 const parseSSRLink = (link) => {
@@ -147,7 +247,7 @@ const parseSSRLink = (link) => {
   const paramsStr = atob(base64Params);
   const params = new URLSearchParams('?' + paramsStr);
   
-  return {
+  const config = {
     name: params.get('remarks') || 'SSR Server',
     type: 'ssr',
     server: server,
@@ -155,26 +255,36 @@ const parseSSRLink = (link) => {
     cipher: method,
     password: atob(params.get('password')),
     protocol: protocol,
-    protocolParam: atob(params.get('protoparam') || ''),
     obfs: obfs,
-    obfsParam: atob(params.get('obfsparam') || ''),
   };
+  
+  if (params.get('protoparam')) config.protocolParam = atob(params.get('protoparam'));
+  if (params.get('obfsparam')) config.obfsParam = atob(params.get('obfsparam'));
+  
+  return config;
 };
 
 const parseHTTPProxyLink = (link) => {
   const url = new URL(link);
-  const params = new URLSearchParams(url.search);
   
-  return {
+  const config = {
     name: url.hash ? decodeURIComponent(url.hash.substring(1)) : 'HTTP Proxy',
     type: 'http',
     server: url.hostname,
-    port: parseInt(url.port) || 80,
-    username: url.username || '',
-    password: url.password || '',
-    tls: url.protocol === 'https:',
-    sni: params.get('sni') || '',
+    port: parseInt(url.port) || (url.protocol === 'https:' ? 443 : 80),
   };
+  
+  if (url.username) config.username = url.username;
+  if (url.password) config.password = url.password;
+  
+  // Enable TLS if HTTPS
+  if (url.protocol === 'https:') {
+    config.tls = true;
+    const sni = new URLSearchParams(url.search).get('sni');
+    if (sni) config.servername = sni;
+  }
+  
+  return config;
 };
 
 const generateClashYAML = (config, settings) => {
@@ -184,14 +294,13 @@ const generateClashYAML = (config, settings) => {
   // Create proxy groups
   const proxyGroups = [];
   
-  // Add load balancing group if enabled
-  if (settings.loadBalance) {
+  // Add URL test group if enabled
+  if (settings.urlTest) {
     proxyGroups.push({
-      name: "LoadBalance",
-      type: "load-balance",
-      strategy: "round-robin",
+      name: "Auto",
+      type: "url-test",
       proxies: [config.name],
-      use: ["sub1"], // using all subscriptions
+      url: "http://www.gstatic.com/generate_204",
       interval: 300,
       tolerance: 50,
     });
@@ -202,23 +311,21 @@ const generateClashYAML = (config, settings) => {
     proxyGroups.push({
       name: "Fallback",
       type: "fallback",
-      proxies: [config.name, "DIRECT"],
-      use: ["sub1"],
+      proxies: [config.name],
+      url: "http://www.gstatic.com/generate_204",
       interval: 300,
-      tolerance: 50,
     });
   }
   
-  // Add URL test group if enabled
-  if (settings.urlTest) {
+  // Add load balancing group if enabled
+  if (settings.loadBalance) {
     proxyGroups.push({
-      name: "URLTest",
-      type: "url-test",
+      name: "LoadBalance",
+      type: "load-balance",
       proxies: [config.name],
-      use: ["sub1"],
       url: "http://www.gstatic.com/generate_204",
       interval: 300,
-      tolerance: 50,
+      strategy: "round-robin"
     });
   }
   
@@ -227,18 +334,43 @@ const generateClashYAML = (config, settings) => {
     {
       name: "Proxy",
       type: "select",
-      proxies: settings.loadBalance 
-        ? ["LoadBalance", "Fallback", "URLTest", config.name] 
+      proxies: settings.urlTest 
+        ? ["Auto", config.name, "DIRECT"] 
         : settings.fallback 
-          ? ["Fallback", "URLTest", config.name] 
-          : settings.urlTest 
-            ? ["URLTest", config.name] 
+          ? ["Fallback", config.name, "DIRECT"] 
+          : settings.loadBalance 
+            ? ["LoadBalance", config.name, "DIRECT"] 
             : [config.name, "DIRECT"],
+    },
+    {
+      name: "AsianTV",
+      type: "select",
+      proxies: ["DIRECT", config.name],
+    },
+    {
+      name: "GlobalTV",
+      type: "select",
+      proxies: [config.name, "DIRECT"],
+    },
+    {
+      name: "Microsoft",
+      type: "select",
+      proxies: [config.name, "DIRECT"],
+    },
+    {
+      name: "Apple",
+      type: "select",
+      proxies: [config.name, "DIRECT", "Proxy"],
+    },
+    {
+      name: "AdBlock",
+      type: "select",
+      proxies: ["REJECT", "DIRECT"],
     },
     {
       name: "Final",
       type: "select",
-      proxies: ["Proxy", "DIRECT", "REJECT"],
+      proxies: ["Proxy", "DIRECT"],
     }
   );
   
@@ -248,74 +380,105 @@ const generateClashYAML = (config, settings) => {
   // Block ads if enabled
   if (settings.blockAds) {
     rules.push(
-      "DOMAIN-SUFFIX,ad.com,REJECT",
-      "DOMAIN-SUFFIX,adsrvr.org,REJECT",
-      "DOMAIN-SUFFIX,doubleclick.net,REJECT",
-      "DOMAIN-SUFFIX,googleadservices.com,REJECT",
-      "DOMAIN-SUFFIX,googlesyndication.com,REJECT",
-      "DOMAIN-SUFFIX,googletagmanager.com,REJECT",
-      "DOMAIN-SUFFIX,googletagservices.com,REJECT",
-      "DOMAIN-SUFFIX,googlesyndication.com,REJECT",
-      "DOMAIN-SUFFIX,adnxs.com,REJECT",
-      "DOMAIN-SUFFIX,mathtag.com,REJECT",
-      "DOMAIN-SUFFIX,ads-twitter.com,REJECT",
-      "DOMAIN-SUFFIX,ads.linkedin.com,REJECT",
-      "DOMAIN-SUFFIX,ads.pinterest.com,REJECT",
-      "DOMAIN-SUFFIX,ads-api.twitter.com,REJECT",
-      "DOMAIN-SUFFIX,ads.yahoo.com,REJECT",
-      "DOMAIN-SUFFIX,analytics.google.com,REJECT",
-      "DOMAIN-SUFFIX,stats.g.doubleclick.net,REJECT",
-      "DOMAIN-SUFFIX,google-analytics.com,REJECT",
-      "DOMAIN-SUFFIX,analytics.google.com,REJECT",
-      "DOMAIN-SUFFIX,doubleclick.com,REJECT",
-      "DOMAIN-SUFFIX,googleadservices.com,REJECT",
-      "DOMAIN-SUFFIX,googlesyndication.com,REJECT",
-      "DOMAIN-SUFFIX,googletagmanager.com,REJECT",
-      "DOMAIN-SUFFIX,googletagservices.com,REJECT",
-      "DOMAIN-SUFFIX,google-analytics.com,REJECT",
-      "DOMAIN-SUFFIX,googleapis.com,REJECT",
-      "DOMAIN-SUFFIX,googleusercontent.com,REJECT",
-      "DOMAIN-SUFFIX,googlevideo.com,REJECT",
-      "DOMAIN-SUFFIX,googlesyndication.com,REJECT",
-      "DOMAIN-SUFFIX,googles.com,REJECT",
-      "DOMAIN-SUFFIX,googleadservices.com,REJECT",
-      "DOMAIN-SUFFIX,google-analytics.com,REJECT",
-      "DOMAIN-SUFFIX,googleapis.com,REJECT",
-      "DOMAIN-SUFFIX,googleusercontent.com,REJECT",
-      "DOMAIN-SUFFIX,googlevideo.com,REJECT",
-      "DOMAIN-SUFFIX,googlesyndication.com,REJECT",
-      "DOMAIN-SUFFIX,googles.com,REJECT",
-      "DOMAIN-SUFFIX,googleadservices.com,REJECT",
-      "DOMAIN-SUFFIX,google-analytics.com,REJECT",
-      "DOMAIN-SUFFIX,googleapis.com,REJECT",
-      "DOMAIN-SUFFIX,googleusercontent.com,REJECT",
-      "DOMAIN-SUFFIX,googlevideo.com,REJECT",
-      "DOMAIN-SUFFIX,googlesyndication.com,REJECT",
-      "DOMAIN-SUFFIX,googles.com,REJECT"
+      "DOMAIN-SUFFIX,ad.com,AdBlock",
+      "DOMAIN-SUFFIX,adsrvr.org,AdBlock",
+      "DOMAIN-SUFFIX,doubleclick.net,AdBlock",
+      "DOMAIN-SUFFIX,googleadservices.com,AdBlock",
+      "DOMAIN-SUFFIX,googlesyndication.com,AdBlock",
+      "DOMAIN-SUFFIX,googletagmanager.com,AdBlock",
+      "DOMAIN-SUFFIX,googletagservices.com,AdBlock",
+      "DOMAIN-SUFFIX,adnxs.com,AdBlock",
+      "DOMAIN-SUFFIX,mathtag.com,AdBlock",
+      "DOMAIN-SUFFIX,ads-twitter.com,AdBlock",
+      "DOMAIN-SUFFIX,ads.linkedin.com,AdBlock",
+      "DOMAIN-SUFFIX,ads.pinterest.com,AdBlock",
+      "DOMAIN-SUFFIX,ads-api.twitter.com,AdBlock",
+      "DOMAIN-SUFFIX,ads.yahoo.com,AdBlock",
+      "DOMAIN-SUFFIX,analytics.google.com,AdBlock",
+      "DOMAIN-SUFFIX,stats.g.doubleclick.net,AdBlock",
+      "DOMAIN-SUFFIX,google-analytics.com,AdBlock",
+      "DOMAIN-SUFFIX,doubleclick.com,AdBlock",
+      "DOMAIN-SUFFIX,googleadservices.com,AdBlock",
+      "DOMAIN-SUFFIX,googlesyndication.com,AdBlock",
+      "DOMAIN-SUFFIX,googletagmanager.com,AdBlock",
+      "DOMAIN-SUFFIX,googletagservices.com,AdBlock",
+      "DOMAIN-SUFFIX,google-analytics.com,AdBlock",
+      "DOMAIN-SUFFIX,googleapis.com,AdBlock",
+      "DOMAIN-SUFFIX,googleusercontent.com,AdBlock",
+      "DOMAIN-SUFFIX,googlevideo.com,AdBlock",
+      "DOMAIN-SUFFIX,googlesyndication.com,AdBlock",
+      "DOMAIN-SUFFIX,googles.com,AdBlock",
+      "DOMAIN-SUFFIX,googleadservices.com,AdBlock",
+      "DOMAIN-SUFFIX,google-analytics.com,AdBlock",
+      "DOMAIN-SUFFIX,googleapis.com,AdBlock",
+      "DOMAIN-SUFFIX,googleusercontent.com,AdBlock",
+      "DOMAIN-SUFFIX,googlevideo.com,AdBlock",
+      "DOMAIN-SUFFIX,googlesyndication.com,AdBlock",
+      "DOMAIN-SUFFIX,googles.com,AdBlock",
+      "DOMAIN-SUFFIX,googleadservices.com,AdBlock",
+      "DOMAIN-SUFFIX,google-analytics.com,AdBlock",
+      "DOMAIN-SUFFIX,googleapis.com,AdBlock",
+      "DOMAIN-SUFFIX,googleusercontent.com,AdBlock",
+      "DOMAIN-SUFFIX,googlevideo.com,AdBlock",
+      "DOMAIN-SUFFIX,googlesyndication.com,AdBlock",
+      "DOMAIN-SUFFIX,googles.com,AdBlock"
     );
   }
   
   // Default rules
   rules.push(
-    "DOMAIN-SUFFIX,ipify.org,DIRECT",
+    "DOMAIN-SUFFIX,clash.razord.top,DIRECT",
+    "DOMAIN-SUFFIX,ipinfo.io,DIRECT",
     "DOMAIN-SUFFIX,ip-api.com,DIRECT",
     "DOMAIN-SUFFIX,ipv4.google.com,DIRECT",
     "DOMAIN-SUFFIX,ipv6.google.com,DIRECT",
     "DOMAIN-SUFFIX,bing.com,DIRECT",
     "DOMAIN-SUFFIX,bing.net,DIRECT",
+    
+    // Apple
+    "DOMAIN-SUFFIX,aaplimg.com,Apple",
+    "DOMAIN-SUFFIX,apple.co,Apple",
+    "DOMAIN-SUFFIX,apple.com,Apple",
+    "DOMAIN-SUFFIX,apple.com.cn,Apple",
+    "DOMAIN-SUFFIX,icloud.com,Apple",
+    "DOMAIN-SUFFIX,icloud.com.cn,Apple",
+    
+    // Microsoft
+    "DOMAIN-SUFFIX,microsoft.com,Microsoft",
+    "DOMAIN-SUFFIX,microsoft.com.cn,Microsoft",
+    "DOMAIN-SUFFIX,office.com,Microsoft",
+    "DOMAIN-SUFFIX,office.net,Microsoft",
+    "DOMAIN-SUFFIX,hotmail.com,Microsoft",
+    "DOMAIN-SUFFIX,outlook.com,Microsoft",
+    
+    // Asian TV
+    "DOMAIN-SUFFIX,mytvsuper.com,AsianTV",
+    "DOMAIN-SUFFIX,hk01.com,AsianTV",
+    "DOMAIN-SUFFIX,now.com,AsianTV",
+    
+    // Global TV
+    "DOMAIN-SUFFIX,netflix.com,GlobalTV",
+    "DOMAIN-SUFFIX,netflix.net,GlobalTV",
+    "DOMAIN-SUFFIX,nflxext.com,GlobalTV",
+    "DOMAIN-SUFFIX,nflximg.com,GlobalTV",
+    "DOMAIN-SUFFIX,nflximg.net,GlobalTV",
+    "DOMAIN-SUFFIX,nflxso.net,GlobalTV",
+    "DOMAIN-SUFFIX,nflxvideo.net,GlobalTV",
+    "DOMAIN-SUFFIX,youtube.com,GlobalTV",
+    "DOMAIN-SUFFIX,googlevideo.com,GlobalTV",
+    
     "GEOIP,CN,DIRECT",
     "MATCH,Final"
   );
   
   const clashConfig = {
-    port: 7890,
-    "socks-port": 7891,
-    "allow-lan": true,
+    mixed_port: 7890,
+    allow_lan: true,
     mode: "rule",
-    "log-level": "info",
-    "external-controller": "127.0.0.1:9090",
+    log_level: "info",
+    external_controller: "127.0.0.1:9090",
     proxies: proxies,
-    'proxy-groups': proxyGroups,
+    "proxy-groups": proxyGroups,
     rules: rules,
   };
   
