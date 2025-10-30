@@ -1,5 +1,3 @@
-import yaml from 'js-yaml';
-
 // Define types
 interface ConfigOptions {
   isFullConfig?: boolean;
@@ -30,6 +28,11 @@ interface V2RayLink {
   sni?: string;
   skipCertVerify: boolean;
   uniqueName?: string;
+  udp?: boolean;
+  plugin?: string;
+  client-fingerprint?: string;
+  plugin-opts?: any;
+  headers?: any;
 }
 
 interface ParsedLink extends V2RayLink {
@@ -249,7 +252,6 @@ function generateClashConfig(parsedLinks: V2RayLink[], options: ConfigOptions = 
     bestPing = true,
     loadBalance = false,
     fallback = false,
-    allGroups = false,
     adsBlock = true,
     pornBlock = true,
   } = options;
