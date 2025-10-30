@@ -1,17 +1,45 @@
 import React, { useState } from 'react';
-import { convertV2rayToConfig, downloadYaml, copyToClipboard } from './converterLogic.js';
+import { convertV2rayToConfig, downloadYaml, copyToClipboard } from './converterLogic';
 
-const Converter = () => {
-  const [v2rayInput, setV2rayInput] = useState('');
-  const [configOutput, setConfigOutput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+interface ConfigOptions {
+  bestPing: boolean;
+  loadBalance: boolean;
+  fallback: boolean;
+  allGroups: boolean;
+  adsBlock: boolean;
+  pornBlock: boolean;
+}
+
+interface V2RayLink {
+  type: string;
+  name: string;
+  server: string;
+  port: number;
+  uuid?: string;
+  password?: string;
+  cipher?: string;
+  alterId?: number;
+  tls: boolean;
+  network: string;
+  wsPath?: string;
+  wsHost?: string;
+  grpcServiceName?: string;
+  httpUpgrade?: boolean;
+  sni?: string;
+  skipCertVerify: boolean;
+  uniqueName?: string;
+}
+
+const Converter: React.FC = () => {
+  const [v2rayInput, setV2rayInput] = useState<string>('');
+  const [configOutput, setConfigOutput] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [copied, setCopied] = useState<boolean>(false);
   
-  // State for configuration options
-  const [configType, setConfigType] = useState('minimal'); // 'minimal' or 'full'
-  const [dnsMode, setDnsMode] = useState('fake-ip'); // 'fake-ip' or 'redir-host'
-  const [options, setOptions] = useState({
+  const [configType, setConfigType] = useState<'minimal' | 'full'>('minimal');
+  const [dnsMode, setDnsMode] = useState<'fake-ip' | 'redir-host'>('fake-ip');
+  const [options, setOptions] = useState<ConfigOptions>({
     bestPing: false,
     loadBalance: false,
     fallback: false,
@@ -30,7 +58,6 @@ const Converter = () => {
     setError('');
     
     try {
-      // Prepare options for conversion
       const conversionOptions = {
         isFullConfig: configType === 'full',
         useFakeIp: dnsMode === 'fake-ip',
@@ -44,7 +71,7 @@ const Converter = () => {
       
       setConfigOutput(result);
       setLoading(false);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Failed to convert V2Ray links. Please check your input.');
       setLoading(false);
     }
@@ -60,7 +87,7 @@ const Converter = () => {
     }
   };
 
-  const handleDownload = (type) => {
+  const handleDownload = (type: 'provider' | 'full') => {
     if (!configOutput) {
       setError('No content to download. Please convert first.');
       return;
@@ -78,7 +105,7 @@ const Converter = () => {
     downloadYaml(configOutput, filename);
   };
 
-  const toggleOption = (option) => {
+  const toggleOption = (option: keyof ConfigOptions) => {
     setOptions(prev => ({
       ...prev,
       [option]: !prev[option]

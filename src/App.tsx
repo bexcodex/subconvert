@@ -1,5 +1,5 @@
 import React from 'react';
-import Converter from './Converter.jsx';
+import Converter from './Converter';
 import './index.css';
 
 function App() {

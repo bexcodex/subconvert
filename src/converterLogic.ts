@@ -1,20 +1,53 @@
 import yaml from 'js-yaml';
 
-export async function convertV2rayToConfig(v2rayLinks, options = {}) {
-  // Split input by lines
+// Define types
+interface ConfigOptions {
+  isFullConfig?: boolean;
+  useFakeIp?: boolean;
+  bestPing?: boolean;
+  loadBalance?: boolean;
+  fallback?: boolean;
+  allGroups?: boolean;
+  adsBlock?: boolean;
+  pornBlock?: boolean;
+}
+
+interface V2RayLink {
+  type: string;
+  name: string;
+  server: string;
+  port: number;
+  uuid?: string;
+  password?: string;
+  cipher?: string;
+  alterId?: number;
+  tls: boolean;
+  network: string;
+  wsPath?: string;
+  wsHost?: string;
+  grpcServiceName?: string;
+  httpUpgrade?: boolean;
+  sni?: string;
+  skipCertVerify: boolean;
+  uniqueName?: string;
+}
+
+interface ParsedLink extends V2RayLink {
+  uniqueName: string;
+}
+
+export async function convertV2rayToConfig(v2rayLinks: string, options: ConfigOptions = {}): Promise<string> {
   const links = v2rayLinks.split(/\r?\n/).filter((line) => line.trim() !== "");
   if (links.length === 0) {
     throw new Error("No valid V2Ray links found");
   }
   
-  // Process each link
   const parsedLinks = links.map((link) => parseV2rayLink(link));
 
-  // Generate Clash config
   return generateClashConfig(parsedLinks, options);
 }
 
-function parseV2rayLink(link) {
+function parseV2rayLink(link: string): V2RayLink {
   try {
     if (link.startsWith("vmess://")) {
       return parseVmessLink(link);
@@ -33,10 +66,9 @@ function parseV2rayLink(link) {
   }
 }
 
-function parseVmessLink(link) {
-  // Remove vmess:// prefix and decode base64
+function parseVmessLink(link: string): V2RayLink {
   const base64Content = link.replace("vmess://", "");
-  let config;
+  let config: any;
   try {
     const decodedContent = atob(base64Content);
     config = JSON.parse(decodedContent);
@@ -44,9 +76,7 @@ function parseVmessLink(link) {
     throw new Error("Invalid VMess link format");
   }
   
-  // Check if it's HTTP Upgrade
   const isHttpUpgrade = config["v2ray-http-upgrade"] === true || config["v2ray-http-upgrade"] === "true";
-  // If HTTP Upgrade is enabled, network should be 'ws'
   const networkType = isHttpUpgrade ? "ws" : (config.net || "tcp");
   
   return {
@@ -68,14 +98,13 @@ function parseVmessLink(link) {
   };
 }
 
-function parseVlessLink(link) {
-  // Format: vless://uuid@server:port?params#name
+function parseVlessLink(link: string): V2RayLink {
   try {
     const content = link.replace("vless://", "");
     const [userInfo, rest] = content.split("@");
     const [serverPort, paramsAndName] = rest.split("?");
     const [server, port] = serverPort.split(":");
-    const params = {};
+    const params: Record<string, string> = {};
     let name = "";
     if (paramsAndName) {
       const [paramsStr, encodedName] = paramsAndName.split("#");
@@ -108,14 +137,13 @@ function parseVlessLink(link) {
   }
 }
 
-function parseTrojanLink(link) {
-  // Format: trojan://password@server:port?params#name
+function parseTrojanLink(link: string): V2RayLink {
   try {
     const content = link.replace("trojan://", "");
     const [password, rest] = content.split("@");
     const [serverPort, paramsAndName] = rest.split("?");
     const [server, port] = serverPort.split(":");
-    const params = {};
+    const params: Record<string, string> = {};
     let name = "";
     if (paramsAndName) {
       const [paramsStr, encodedName] = paramsAndName.split("#");
@@ -148,17 +176,16 @@ function parseTrojanLink(link) {
   }
 }
 
-function parseShadowsocksLink(link) {
-  // Format: ss://base64(method:password)@server:port?params#name
+function parseShadowsocksLink(link: string): V2RayLink {
   try {
     const content = link.replace("ss://", "");
-    let userInfo,
-      serverPort,
-      name,
-      params = {};
+    let userInfo: string,
+      serverPort: string,
+      name: string,
+      params: Record<string, string> = {};
     if (content.includes("@")) {
       const [encodedUserInfo, rest] = content.split("@");
-      let serverPortStr, paramsNamePart;
+      let serverPortStr: string, paramsNamePart: string;
       if (rest.includes("?")) {
         const [serverPortPart, tempParamsNamePart] = rest.split("?");
         serverPortStr = serverPortPart;
@@ -215,7 +242,7 @@ function parseShadowsocksLink(link) {
   }
 }
 
-function generateClashConfig(parsedLinks, options = {}) {
+function generateClashConfig(parsedLinks: V2RayLink[], options: ConfigOptions = {}): string {
   const {
     isFullConfig = false,
     useFakeIp = true,
@@ -242,17 +269,14 @@ function generateClashConfig(parsedLinks, options = {}) {
     }
   }
   
-  // Process proxy names to avoid duplicates
-  const proxyNames = [];
-  const usedNames = new Set();
+  const proxyNames: string[] = [];
+  const usedNames = new Set<string>();
   
-  parsedLinks.forEach((link, index) => {
+  const linksWithUniqueNames: ParsedLink[] = parsedLinks.map((link) => {
     let uniqueName = link.name;
     
-    // Check if this name already exists, if so add a number suffix
     let counter = 1;
     while (usedNames.has(uniqueName)) {
-      // If the current name already has a counter in brackets, increment it
       const match = uniqueName.match(/^(.+?)\s*\[(\d+)\]$/);
       if (match) {
         const baseName = match[1];
@@ -265,12 +289,15 @@ function generateClashConfig(parsedLinks, options = {}) {
     
     usedNames.add(uniqueName);
     proxyNames.push(uniqueName);
-    link.uniqueName = uniqueName;
+    
+    return {
+      ...link,
+      uniqueName
+    };
   });
   
   config += `proxies:`;
-  // Add all proxies with unique names
-  parsedLinks.forEach((link, index) => {
+  linksWithUniqueNames.forEach((link) => {
     config += "\n";
     if (link.type === "vmess") {
       config += `  - name: "${link.uniqueName}"\n    type: vmess\n    server: ${link.server}\n    port: ${link.port}\n    uuid: ${link.uuid}\n    alterId: ${link.alterId || 0}\n    cipher: ${link.cipher || "auto"}\n    udp: true\n    tls: ${link.tls}\n    skip-cert-verify: ${link.skipCertVerify || true}\n`;
@@ -323,37 +350,30 @@ function generateClashConfig(parsedLinks, options = {}) {
     if (fallback) config += `      - FALLBACK\n`;
     config += `      - DIRECT\n      - REJECT\n`;
 
-    // Add SELECTOR group
     config += `  - name: "SELECTOR"\n    type: select\n    proxies:\n      - DIRECT\n      - REJECT\n`;
-    // Add all proxy names to the SELECTOR group only once
     proxyNames.forEach((name) => {
       config += `      - ${name}\n`;
     });
 
-    // Add proxy groups based on options
     if (bestPing) {
       config += `  - name: "BEST-PING"\n    type: url-test\n    url: http://www.gstatic.com/generate_204\n    interval: 300\n    tolerance: 50\n    proxies:\n`;
-      // Add all proxy names to the url-test group
       proxyNames.forEach((name) => {
         config += `      - ${name}\n`;
       });
     }
     if (loadBalance) {
       config += `  - name: "LOAD-BALANCE"\n    type: load-balance\n    url: http://www.gstatic.com/generate_204\n    interval: 300\n    strategy: round-robin\n    proxies:\n`;
-      // Add all proxy names to the load-balance group
       proxyNames.forEach((name) => {
         config += `      - ${name}\n`;
       });
     }
     if (fallback) {
       config += `  - name: "FALLBACK"\n    type: fallback\n    url: http://www.gstatic.com/generate_204\n    interval: 300\n    proxies:\n`;
-      // Add all proxy names to the fallback group
       proxyNames.forEach((name) => {
         config += `      - ${name}\n`;
       });
     }
 
-    // Add rule groups if needed
     if (adsBlock) {
       config += `  - name: "ADS"\n    type: select\n    proxies:\n      - REJECT\n      - DIRECT\n`;
       if (bestPing) config += `      - BEST-PING\n`;
@@ -367,7 +387,6 @@ function generateClashConfig(parsedLinks, options = {}) {
       if (fallback) config += `      - FALLBACK\n`;
     }
 
-    // Add rules
     config += `rules:\n`;
     if (adsBlock) {
       config += `  - RULE-SET,⛔ ADS,ADS\n`;
@@ -380,7 +399,7 @@ function generateClashConfig(parsedLinks, options = {}) {
   return config;
 }
 
-export function downloadYaml(content, filename) {
+export function downloadYaml(content: string, filename: string): void {
   const blob = new Blob([content], { type: "text/yaml" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -392,7 +411,7 @@ export function downloadYaml(content, filename) {
   URL.revokeObjectURL(url);
 }
 
-export async function copyToClipboard(text) {
+export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
     return true;
