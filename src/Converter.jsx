@@ -8,9 +8,8 @@ const Converter = () => {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   
-  // State for configuration options
-  const [configType, setConfigType] = useState('minimal'); // 'minimal' or 'full'
-  const [dnsMode, setDnsMode] = useState('fake-ip'); // 'fake-ip' or 'redir-host'
+  const [configType, setConfigType] = useState('minimal');
+  const [dnsMode, setDnsMode] = useState('fake-ip');
   const [options, setOptions] = useState({
     bestPing: false,
     loadBalance: false,
@@ -30,7 +29,6 @@ const Converter = () => {
     setError('');
     
     try {
-      // Prepare options for conversion
       const conversionOptions = {
         isFullConfig: configType === 'full',
         useFakeIp: dnsMode === 'fake-ip',
@@ -97,14 +95,14 @@ const Converter = () => {
   };
 
   return (
-    <div className="bg-dark-800 rounded-xl p-6 shadow-2xl border border-dark-700">
-      <h2 className="text-2xl font-bold mb-6 text-blue-400 border-b border-dark-700 pb-2">V2Ray to Clash Converter</h2>
+    <div className="bg-dark-bg-card rounded-2xl p-8 shadow-2xl border border-dark-bg-input">
+      <h2 className="text-3xl font-extrabold mb-8 text-primary border-b border-dark-bg-input pb-4">V2Ray to Clash Converter</h2>
       
       <div className="mb-6">
-        <label className="block text-lg font-medium mb-2 text-gray-200">V2Ray Links (One per line):</label>
+        <label className="block text-lg font-medium mb-2 text-text">V2Ray Links (One per line):</label>
         <textarea
           id="v2ray-input"
-          className="w-full h-40 p-4 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+          className="w-full h-40 p-4 bg-dark-bg-input border border-dark-bg-input rounded-xl text-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm transition-colors"
           value={v2rayInput}
           onChange={(e) => setV2rayInput(e.target.value)}
           placeholder="Paste your V2Ray links here, one per line..."
@@ -113,20 +111,20 @@ const Converter = () => {
       
       <div className="flex flex-wrap gap-4 mb-6">
         <button 
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-4 py-2 rounded-xl font-medium transition-colors shadow-md ${
             configType === 'minimal' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-dark-700 text-gray-200 hover:bg-dark-600'
+              ? 'bg-primary text-white hover:bg-primary-hover' 
+              : 'bg-dark-bg-input text-text hover:bg-dark-bg-input/70'
           }`}
           onClick={() => setConfigType('minimal')}
         >
           Minimal Config
         </button>
         <button 
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-4 py-2 rounded-xl font-medium transition-colors shadow-md ${
             configType === 'full' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-dark-700 text-gray-200 hover:bg-dark-600'
+              ? 'bg-primary text-white hover:bg-primary-hover' 
+              : 'bg-dark-bg-input text-text hover:bg-dark-bg-input/70'
           }`}
           onClick={() => setConfigType('full')}
         >
@@ -134,10 +132,10 @@ const Converter = () => {
         </button>
         
         <button 
-          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-6 py-2 rounded-xl font-medium transition-colors shadow-md ${
             loading 
               ? 'bg-gray-600 cursor-not-allowed' 
-              : 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-success text-white hover:bg-success/80'
           }`}
           onClick={handleConvert}
           disabled={loading}
@@ -154,26 +152,25 @@ const Converter = () => {
         </button>
       </div>
       
-      {/* DNS Mode Options */}
       {configType === 'full' && (
         <div className="mb-6">
-          <h3 className="text-lg font-medium mb-3 text-gray-200">DNS Mode:</h3>
+          <h3 className="text-lg font-medium mb-3 text-text">DNS Mode:</h3>
           <div className="flex flex-wrap gap-3">
             <button
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-xl font-medium transition-colors shadow-sm ${
                 dnsMode === 'fake-ip' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-dark-700 text-gray-200 hover:bg-dark-600'
+                  ? 'bg-primary text-white hover:bg-primary-hover' 
+                  : 'bg-dark-bg-input text-text hover:bg-dark-bg-input/70'
               }`}
               onClick={() => setDnsMode('fake-ip')}
             >
               Fake IP
             </button>
             <button
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-xl font-medium transition-colors shadow-sm ${
                 dnsMode === 'redir-host' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-dark-700 text-gray-200 hover:bg-dark-600'
+                  ? 'bg-primary text-white hover:bg-primary-hover' 
+                  : 'bg-dark-bg-input text-text hover:bg-dark-bg-input/70'
               }`}
               onClick={() => setDnsMode('redir-host')}
             >
@@ -183,82 +180,81 @@ const Converter = () => {
         </div>
       )}
       
-      {/* Clash Configuration Options */}
       {configType === 'full' && (
         <div className="mb-6">
-          <h3 className="text-lg font-medium mb-3 text-gray-200">Clash Configuration Options:</h3>
+          <h3 className="text-lg font-medium mb-3 text-text">Clash Configuration Options:</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="best-ping"
-                className="w-4 h-4 text-blue-600 bg-dark-700 border-dark-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-primary bg-dark-bg-input border-dark-bg-input rounded focus:ring-primary"
                 checked={options.bestPing}
                 onChange={() => toggleOption('bestPing')}
               />
-              <label htmlFor="best-ping" className="text-gray-200">Best Ping</label>
+              <label htmlFor="best-ping" className="text-text">Best Ping</label>
             </div>
             
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="load-balance"
-                className="w-4 h-4 text-blue-600 bg-dark-700 border-dark-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-primary bg-dark-bg-input border-dark-bg-input rounded focus:ring-primary"
                 checked={options.loadBalance}
                 onChange={() => toggleOption('loadBalance')}
               />
-              <label htmlFor="load-balance" className="text-gray-200">Load Balance</label>
+              <label htmlFor="load-balance" className="text-text">Load Balance</label>
             </div>
             
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="fallback"
-                className="w-4 h-4 text-blue-600 bg-dark-700 border-dark-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-primary bg-dark-bg-input border-dark-bg-input rounded focus:ring-primary"
                 checked={options.fallback}
                 onChange={() => toggleOption('fallback')}
               />
-              <label htmlFor="fallback" className="text-gray-200">Fallback</label>
+              <label htmlFor="fallback" className="text-text">Fallback</label>
             </div>
             
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="all-groups"
-                className="w-4 h-4 text-blue-600 bg-dark-700 border-dark-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-primary bg-dark-bg-input border-dark-bg-input rounded focus:ring-primary"
                 checked={options.allGroups}
                 onChange={toggleAllGroups}
               />
-              <label htmlFor="all-groups" className="text-gray-200">All Groups</label>
+              <label htmlFor="all-groups" className="text-text">All Groups</label>
             </div>
             
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="ads-block"
-                className="w-4 h-4 text-blue-600 bg-dark-700 border-dark-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-primary bg-dark-bg-input border-dark-bg-input rounded focus:ring-primary"
                 checked={options.adsBlock}
                 onChange={() => toggleOption('adsBlock')}
               />
-              <label htmlFor="ads-block" className="text-gray-200">Block Ads</label>
+              <label htmlFor="ads-block" className="text-text">Block Ads</label>
             </div>
             
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="porn-block"
-                className="w-4 h-4 text-blue-600 bg-dark-700 border-dark-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-primary bg-dark-bg-input border-dark-bg-input rounded focus:ring-primary"
                 checked={options.pornBlock}
                 onChange={() => toggleOption('pornBlock')}
               />
-              <label htmlFor="porn-block" className="text-gray-200">Block Porn</label>
+              <label htmlFor="porn-block" className="text-text">Block Porn</label>
             </div>
           </div>
         </div>
       )}
       
       {error && (
-        <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-200 flex items-center">
+        <div className="mb-4 p-4 bg-danger/20 border border-danger rounded-xl text-text flex items-center">
           <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
           </svg>
@@ -268,15 +264,15 @@ const Converter = () => {
       
       <div className="mt-6">
         <div className="relative">
-          <label className="block text-lg font-medium mb-2 text-gray-200">Clash Configuration:</label>
+          <label className="block text-lg font-medium mb-2 text-text">Clash Configuration:</label>
           <textarea
             id="config-output"
-            className="w-full h-80 p-4 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-xs overflow-auto monospace-font"
+            className="w-full h-80 p-4 bg-dark-bg-input border border-dark-bg-input rounded-xl text-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-xs overflow-auto monospace-font transition-colors"
             value={configOutput}
             readOnly
           />
           <button 
-            className="absolute top-2 right-2 px-3 py-1.5 bg-dark-600 hover:bg-dark-500 text-gray-200 rounded-lg text-sm font-medium transition-colors flex items-center"
+            className="absolute top-4 right-4 px-3 py-1.5 bg-dark-bg-input hover:bg-dark-bg-input/70 text-text rounded-xl text-sm font-medium transition-colors flex items-center shadow-md"
             onClick={handleCopy}
           >
             {copied ? (
@@ -300,7 +296,7 @@ const Converter = () => {
         <div className="flex flex-wrap gap-4 mt-4">
           {configType === 'full' ? (
             <button 
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center"
+              className="px-4 py-2 bg-success hover:bg-success/80 text-white rounded-xl font-medium transition-colors flex items-center shadow-md"
               onClick={() => handleDownload('full')}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -310,7 +306,7 @@ const Converter = () => {
             </button>
           ) : (
             <button 
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center"
+              className="px-4 py-2 bg-success hover:bg-success/80 text-white rounded-xl font-medium transition-colors flex items-center shadow-md"
               onClick={() => handleDownload('provider')}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

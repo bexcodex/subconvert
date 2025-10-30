@@ -1,4 +1,3 @@
-/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./index.html",
@@ -7,23 +6,29 @@ export default {
   theme: {
     extend: {
       colors: {
-        dark: {
-          900: '#0a0a0a',
-          800: '#1a1a1a',
-          700: '#2a2a2a',
-          600: '#3a3a3a',
-          500: '#4a4a4a',
+        'dark-bg': {
+          DEFAULT: '#0D1117', // Main background
+          'card': '#161B22', // Card background
+          'input': '#21262D', // Input/border color
         },
-        blue: {
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
+        'primary': {
+          DEFAULT: '#6366F1', // Indigo 500
+          'hover': '#4F46E5', // Indigo 600
         },
-        green: {
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
+        'success': {
+          DEFAULT: '#10B981', // Green 500
+        },
+        'danger': {
+          DEFAULT: '#EF4444', // Red 500
+        },
+        'text': {
+          DEFAULT: '#E5E7EB', // Light text
+          'secondary': '#9CA3AF', // Secondary text
         }
+      },
+      borderRadius: {
+        'xl': '1rem',
+        '2xl': '1.5rem',
       }
     },
   },
