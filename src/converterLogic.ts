@@ -1,3 +1,5 @@
+import yaml from 'js-yaml';
+
 // Define types
 interface ConfigOptions {
   isFullConfig?: boolean;
