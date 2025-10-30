@@ -25,7 +25,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
-        mono: ['Fira Code', ...default_theme.fontFamily.mono],
+        mono: ['Fira Code', ...defaultTheme.fontFamily.mono],
       },
     },
   },
