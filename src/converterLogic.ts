@@ -22,7 +22,7 @@ interface V2RayLink {
   cipher?: string;
   alterId?: number;
   tls: boolean;
-  network: string;
+  network?: string;
   wsPath?: string;
   wsHost?: string;
   grpcServiceName?: string;
