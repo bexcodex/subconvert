@@ -32,8 +32,8 @@ interface V2RayLink {
   uniqueName?: string;
   udp?: boolean;
   plugin?: string;
-  client-fingerprint?: string;
-  plugin-opts?: any;
+  'client-fingerprint'?: string;
+  'plugin-opts'?: any;
   headers?: any;
 }
 
