@@ -233,7 +233,7 @@ const Converter: React.FC = () => {
           </div>
           <textarea
             id="config-output"
-            className="w-full flex-grow p-4 bg-background border border-border rounded-md text-text focus:outline-none focus:ring-2 focus:ring-accent font-mono text-sm resize-y"
+            className="w-full flex-grow h-full min-h-[400px] p-4 bg-background border border-border rounded-md text-text focus:outline-none focus:ring-2 focus:ring-accent font-mono text-sm resize-y"
             value={configOutput}
             readOnly
             placeholder="Your Clash configuration will appear here..."
