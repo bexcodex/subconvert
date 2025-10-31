@@ -1,0 +1,4 @@
+User-Agent: *
+Allow: /
+
+Sitemap: https://subconvert.web.id/sitemap.xml
