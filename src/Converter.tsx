@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { convertV2rayToConfig, downloadYaml, copyToClipboard } from './converterLogic';
+import { convertV2rayToConfig, downloadYaml, copyToClipboard } from './converter';
 
 interface ConfigOptions {
   bestPing: boolean;
@@ -35,8 +35,8 @@ const Converter: React.FC = () => {
     loadBalance: false,
     fallback: false,
     allGroups: false,
-    adsBlock: true,
-    pornBlock: true,
+    adsBlock: false,
+    pornBlock: false,
   });
 
   const handleConvert = async () => {
